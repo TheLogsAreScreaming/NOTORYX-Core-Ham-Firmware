@@ -8,6 +8,9 @@ Packet::Packet() {
   header = 0;
   path_len = 0;
   payload_len = 0;
+#if AMATEUR_RADIO
+  heard_station[0] = 0;
+#endif
 }
 
 bool Packet::isValidPathLen(uint8_t path_len) {
@@ -35,7 +38,7 @@ uint8_t Packet::copyPath(uint8_t* dest, const uint8_t* src, uint8_t path_len) {
 }
 
 int Packet::getRawLength() const {
-  return 2 + getPathByteLen() + payload_len + (hasTransportCodes() ? 4 : 0);
+  return 2 + getPathByteLen() + payload_len + (hasTransportCodes() ? 4 : 0) + STATION_ID_SIZE;   // as sent on air
 }
 
 void Packet::calculatePacketHash(uint8_t* hash) const {

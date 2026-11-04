@@ -1,5 +1,9 @@
 #include "Dispatcher.h"
 
+#if AMATEUR_RADIO
+  #include "helpers/AmateurStation.h"
+#endif
+
 #if MESH_PACKET_LOGGING
   #include <Arduino.h>
 #endif
@@ -18,6 +22,9 @@ namespace mesh {
 
 void Dispatcher::begin() {
   n_sent_flood = n_sent_direct = 0;
+#if AMATEUR_RADIO
+  n_tx_blocked = 0;
+#endif
   n_recv_flood = n_recv_direct = 0;
   _err_flags = 0;
   radio_nonrx_start = _ms->getMillis();
@@ -195,17 +202,38 @@ void Dispatcher::checkRecv() {
   {
     uint8_t raw[MAX_TRANS_UNIT+1];
     int len = _radio->recvRaw(raw, MAX_TRANS_UNIT);
+    int on_air_len = len;
     if (len > 0) {
       logRxRaw(_radio->getLastSNR(), _radio->getLastRSSI(), raw, len);
-
+    }
+#if AMATEUR_RADIO
+    // Amateur frames are marked PAYLOAD_VER_2 and end with the sender's station ID.
+    // Anything else (eg. Part 15 MeshCore traffic on the same channel) is ignored.
+    char heard[AMATEUR_CALL_MAX + 1];
+    if (len > 0) {
+      if (((raw[0] >> PH_VER_SHIFT) & PH_VER_MASK) != PAYLOAD_VER_2 || len < 2 + STATION_ID_SIZE) {
+        MESH_DEBUG_PRINTLN("%s Dispatcher::checkRecv(): not an amateur frame, ignored", getLogDateTime());
+        len = 0;
+      } else {
+        len -= STATION_ID_SIZE;
+        memcpy(heard, &raw[len], STATION_ID_SIZE);
+        heard[STATION_ID_SIZE] = 0;
+        raw[0] &= ~(PH_VER_MASK << PH_VER_SHIFT);   // back to the V1 layout used internally
+      }
+    }
+#endif
+    if (len > 0) {
       pkt = _mgr->allocNew();
       if (pkt == NULL) {
         MESH_DEBUG_PRINTLN("%s Dispatcher::checkRecv(): WARNING: received data, no unused packets available!", getLogDateTime());
       } else {
         if (tryParsePacket(pkt, raw, len)) {
+#if AMATEUR_RADIO
+          memcpy(pkt->heard_station, heard, sizeof(pkt->heard_station));
+#endif
           pkt->_snr = _radio->getLastSNR() * 4.0f;
-          score = _radio->packetScore(_radio->getLastSNR(), len);
-          air_time = _radio->getEstAirtimeFor(len);
+          score = _radio->packetScore(_radio->getLastSNR(), on_air_len);
+          air_time = _radio->getEstAirtimeFor(on_air_len);
           rx_air_time += air_time;
         } else {
           _mgr->free(pkt);  // put back into pool
@@ -306,10 +334,24 @@ void Dispatcher::checkSend() {
 
   outbound = _mgr->getNextOutbound(_ms->getMillis());
   if (outbound) {
+#if AMATEUR_RADIO
+    char station_id[AMATEUR_CALL_MAX + 1];
+    const char* node_name = getNodeName();
+    if (node_name == NULL || AmateurStation::callsignOf(node_name, station_id) == 0) {
+      MESH_DEBUG_PRINTLN("%s Dispatcher::checkSend(): no valid call sign in node name, not transmitting", getLogDateTime());
+      n_tx_blocked++;
+      releasePacket(outbound);
+      outbound = NULL;
+      return;
+    }
+#endif
     int len = 0;
     uint8_t raw[MAX_TRANS_UNIT];
 
     raw[len++] = outbound->header;
+#if AMATEUR_RADIO
+    raw[0] = (raw[0] & ~(PH_VER_MASK << PH_VER_SHIFT)) | (PAYLOAD_VER_2 << PH_VER_SHIFT);
+#endif
     if (outbound->hasTransportCodes()) {
       memcpy(&raw[len], &outbound->transport_codes[0], 2); len += 2;
       memcpy(&raw[len], &outbound->transport_codes[1], 2); len += 2;
@@ -317,12 +359,17 @@ void Dispatcher::checkSend() {
     raw[len++] = outbound->path_len;
     len += Packet::writePath(&raw[len], outbound->path, outbound->path_len);
 
-    if (len + outbound->payload_len > MAX_TRANS_UNIT) {
+    if (len + outbound->payload_len + STATION_ID_SIZE > MAX_TRANS_UNIT) {
       MESH_DEBUG_PRINTLN("%s Dispatcher::checkSend(): FATAL: Invalid packet queued... too long, len=%d", getLogDateTime(), len + outbound->payload_len);
       _mgr->free(outbound);
       outbound = NULL;
     } else {
       memcpy(&raw[len], outbound->payload, outbound->payload_len); len += outbound->payload_len;
+#if AMATEUR_RADIO
+      memset(&raw[len], 0, STATION_ID_SIZE);   // Part 97.119 station identification
+      memcpy(&raw[len], station_id, strlen(station_id));
+      len += STATION_ID_SIZE;
+#endif
 
       uint32_t max_airtime = _radio->getEstAirtimeFor(len)*3/2;
       outbound_start = _ms->getMillis();

@@ -28,6 +28,10 @@ public:
   */
   static void sha256(uint8_t *hash, size_t hash_len, const uint8_t* frag1, int frag1_len, const uint8_t* frag2, int frag2_len);
 
+  /*
+   * NOTE: in AMATEUR_RADIO builds encrypt() and decrypt() do not encrypt; they copy (and
+   * zero pad) the bytes, as Part 97 forbids obscuring content. MACs are still computed.
+   */
   /**
    * \brief  Encrypts the 'src' bytes using AES128 cipher, using 'shared_secret' as key, with key length fixed at CIPHER_KEY_SIZE.
    *         Final block is padded with zero bytes before encrypt. Result stored in 'dest'.

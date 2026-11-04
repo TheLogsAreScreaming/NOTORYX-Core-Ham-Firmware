@@ -13,6 +13,7 @@
 #include <helpers/StaticPoolPacketManager.h>
 #include <helpers/SimpleMeshTables.h>
 #include <helpers/IdentityStore.h>
+#include <helpers/AmateurStation.h>
 #include <RTClib.h>
 #include <target.h>
 
@@ -193,6 +194,8 @@ protected:
   float getAirtimeBudgetFactor() const override {
     return _prefs.airtime_factor;
   }
+
+  const char* getNodeName() { return _prefs.node_name; }   // amateur builds: source of the station ID
 
   int calcRxDelay(float score, uint32_t air_time) const override {
     return 0;  // disable rxdelay
@@ -483,9 +486,13 @@ public:
         savePrefs();
         Serial.println("  OK");
       } else if (memcmp(config, "name ", 5) == 0) {
-        StrHelper::strncpy(_prefs.node_name, &config[5], sizeof(_prefs.node_name));
-        savePrefs();
-        Serial.println("  OK");
+        if (mesh::AmateurStation::isNodeNameAllowed(&config[5])) {
+          StrHelper::strncpy(_prefs.node_name, &config[5], sizeof(_prefs.node_name));
+          savePrefs();
+          Serial.println("  OK");
+        } else {
+          Serial.println("  Error: name must start with your call sign");
+        }
       } else if (memcmp(config, "lat ", 4) == 0) {
         _prefs.node_lat = atof(&config[4]);
         savePrefs();
@@ -499,9 +506,14 @@ public:
         savePrefs();
         Serial.println("  OK - reboot to apply");
       } else if (memcmp(config, "freq ", 5) == 0) {
-        _prefs.freq = atof(&config[5]);
-        savePrefs();
-        Serial.println("  OK - reboot to apply");
+        float freq = atof(&config[5]);
+        if (mesh::AmateurStation::isFreqAllowedMHz(freq)) {
+          _prefs.freq = freq;
+          savePrefs();
+          Serial.println("  OK - reboot to apply");
+        } else {
+          Serial.println("  Error: outside the 70cm/33cm amateur bands");
+        }
       } else {
         Serial.printf("  ERROR: unknown config: %s\n", config);
       }

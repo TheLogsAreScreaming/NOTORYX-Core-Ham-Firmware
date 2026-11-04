@@ -32,7 +32,7 @@ namespace mesh {
 #define PAYLOAD_TYPE_RAW_CUSTOM   0x0F    // custom packet as raw bytes, for applications with custom encryption, payloads, etc
 
 #define PAYLOAD_VER_1       0x00   // 1-byte src/dest hashes, 2-byte MAC
-#define PAYLOAD_VER_2       0x01   // FUTURE (eg. 2-byte hashes, 4-byte MAC ??)
+#define PAYLOAD_VER_2       0x01   // amateur frames: V1 layout + station ID trailer (on air only)
 #define PAYLOAD_VER_3       0x02   // FUTURE
 #define PAYLOAD_VER_4       0x03   // FUTURE
 
@@ -49,6 +49,9 @@ public:
   uint8_t path[MAX_PATH_SIZE];
   uint8_t payload[MAX_PACKET_PAYLOAD];
   int8_t _snr;
+#if AMATEUR_RADIO
+  char heard_station[AMATEUR_CALL_MAX + 1];   // call sign of the station we heard send this frame ("" if we built it)
+#endif
 
   /**
    * \brief calculate the hash of payload + type

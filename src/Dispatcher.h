@@ -124,6 +124,9 @@ class Dispatcher {
   unsigned long next_floor_calib_time, next_agc_reset_time;
   bool  prev_isrecv_mode;
   uint32_t n_sent_flood, n_sent_direct;
+#if AMATEUR_RADIO
+  uint32_t n_tx_blocked;
+#endif
   uint32_t n_recv_flood, n_recv_direct;
   unsigned long tx_budget_ms;
   unsigned long last_budget_update;
@@ -172,6 +175,15 @@ protected:
   virtual int getAGCResetInterval() const { return 0; }    // disabled by default
   virtual unsigned long getDutyCycleWindowMs() const { return 3600000; }
 
+#if AMATEUR_RADIO
+  /**
+   * \brief  this station's node name, which must start with the operator's call sign.
+   *      Node roles already define getNodeName(), which overrides this. Without a valid
+   *      call sign the station does not transmit (Part 97.119).
+   */
+  virtual const char* getNodeName() { return NULL; }
+#endif
+
 public:
   void begin();
   void loop();
@@ -187,8 +199,14 @@ public:
   uint32_t getNumSentDirect() const { return n_sent_direct; }
   uint32_t getNumRecvFlood() const { return n_recv_flood; }
   uint32_t getNumRecvDirect() const { return n_recv_direct; }
+#if AMATEUR_RADIO
+  uint32_t getNumTxBlocked() const { return n_tx_blocked; }   // frames dropped for want of a valid call sign
+#endif
   void resetStats() {
     n_sent_flood = n_sent_direct = n_recv_flood = n_recv_direct = 0;
+#if AMATEUR_RADIO
+    n_tx_blocked = 0;
+#endif
     _err_flags = 0;
   }
 
