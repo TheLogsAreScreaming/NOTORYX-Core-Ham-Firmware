@@ -2,6 +2,7 @@
 #include "CommonCLI.h"
 #include "TxtDataHelpers.h"
 #include "AdvertDataHelpers.h"
+#include "AmateurStation.h"
 #include "TxtDataHelpers.h"
 #include <RTClib.h>
 
@@ -110,6 +111,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {  // Legacy 
     _prefs->direct_tx_delay_factor = constrain(_prefs->direct_tx_delay_factor, 0, 2.0f);
     _prefs->airtime_factor = constrain(_prefs->airtime_factor, 0, 9.0f);
     _prefs->freq = constrain(_prefs->freq, 150.0f, 2500.0f);
+    if (!mesh::AmateurStation::isFreqAllowedMHz(_prefs->freq)) _prefs->freq = LORA_FREQ;
     _prefs->bw = constrain(_prefs->bw, 7.8f, 500.0f);
     _prefs->sf = constrain(_prefs->sf, 5, 12);
     _prefs->cr = constrain(_prefs->cr, 5, 8);
@@ -181,6 +183,15 @@ uint8_t CommonCLI::buildAdvertData(uint8_t node_type, uint8_t* app_data) {
 }
 
 void CommonCLI::handleCommand(uint32_t sender_timestamp, char* command, char* reply) {
+#if AMATEUR_RADIO
+    // Remote admin travels in plain text, so secrets must never be set or read over the air.
+    if (sender_timestamp != 0 && (memcmp(command, "password ", 9) == 0
+        || memcmp(command, "set guest.password", 18) == 0 || memcmp(command, "get guest.password", 18) == 0
+        || memcmp(command, "set prv.key", 11) == 0)) {
+      strcpy(reply, "Error, not over the air in amateur mode (use the serial console)");
+      return;
+    }
+#endif
     if (_prefs->getRadioPrefs()->handleCommand(command, sender_timestamp, reply)) {   // is a radio CLI command?
       if (_prefs->getRadioPrefs()->isDirty()) { savePrefs(); }
       return;
@@ -258,7 +269,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, char* command, char* re
       uint8_t sf  = num > 2 ? atoi(parts[2]) : 0;
       uint8_t cr  = num > 3 ? atoi(parts[3]) : 0;
       int temp_timeout_mins  = num > 4 ? atoi(parts[4]) : 0;
-      if (freq >= 150.0f && freq <= 2500.0f && sf >= 5 && sf <= 12 && cr >= 5 && cr <= 8 && bw >= 7.0f && bw <= 500.0f && temp_timeout_mins > 0) {
+      if (freq >= 150.0f && freq <= 2500.0f && sf >= 5 && sf <= 12 && cr >= 5 && cr <= 8 && bw >= 7.0f && bw <= 500.0f && temp_timeout_mins > 0
+          && mesh::AmateurStation::isFreqAllowedMHz(freq)) {
         _callbacks->applyTempRadioParams(freq, bw, sf, cr, temp_timeout_mins);
         sprintf(reply, "OK - temp params for %d mins", temp_timeout_mins);
       } else {
@@ -528,12 +540,14 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "Error, bad key");
     }
   } else if (memcmp(config, "name ", 5) == 0) {
-    if (isValidName(&config[5])) {
+    if (!isValidName(&config[5])) {
+      strcpy(reply, "Error, bad chars");
+    } else if (!mesh::AmateurStation::isNodeNameAllowed(&config[5])) {
+      strcpy(reply, "Error, name must start with your call sign");
+    } else {
       StrHelper::strncpy(_prefs->node_name, &config[5], sizeof(_prefs->node_name));
       savePrefs();
       strcpy(reply, "OK");
-    } else {
-      strcpy(reply, "Error, bad chars");
     }
   } else if (memcmp(config, "repeat ", 7) == 0) {
     _prefs->disable_fwd = memcmp(&config[7], "off", 3) == 0;
@@ -605,9 +619,14 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "OK");
     }
   } else if (sender_timestamp == 0 && memcmp(config, "freq ", 5) == 0) {
-    _prefs->freq = atof(&config[5]);
-    savePrefs();
-    strcpy(reply, "OK - reboot to apply");
+    float freq = atof(&config[5]);
+    if (mesh::AmateurStation::isFreqAllowedMHz(freq)) {
+      _prefs->freq = freq;
+      savePrefs();
+      strcpy(reply, "OK - reboot to apply");
+    } else {
+      strcpy(reply, "Error, outside the 70cm/33cm amateur bands");
+    }
 #ifdef WITH_BRIDGE
   } else if (memcmp(config, "bridge.enabled ", 15) == 0) {
     _prefs->bridge_enabled = memcmp(&config[15], "on", 2) == 0;

@@ -987,6 +987,7 @@ void MyMesh::begin() {
   _prefs.direct_tx_delay_factor = constrain(_prefs.direct_tx_delay_factor, 0, 2.0f);
   _prefs.airtime_factor = constrain(_prefs.airtime_factor, 0, 9.0f);
   _prefs.freq = constrain(_prefs.freq, 150.0f, 2500.0f);
+  if (!mesh::AmateurStation::isFreqAllowedMHz(_prefs.freq)) _prefs.freq = LORA_FREQ;
   _prefs.bw = constrain(_prefs.bw, 7.8f, 500.0f);
   _prefs.sf = constrain(_prefs.sf, 5, 12);
   _prefs.cr = constrain(_prefs.cr, 5, 8);
@@ -1259,10 +1260,16 @@ void MyMesh::handleCmdFrame(size_t len) {
   } else if (cmd_frame[0] == CMD_SET_ADVERT_NAME && len >= 2) {
     int nlen = len - 1;
     if (nlen > sizeof(_prefs.node_name) - 1) nlen = sizeof(_prefs.node_name) - 1; // max len
-    memcpy(_prefs.node_name, &cmd_frame[1], nlen);
-    _prefs.node_name[nlen] = 0; // null terminator
-    savePrefs();
-    writeOKFrame();
+    char name[sizeof(_prefs.node_name)];
+    memcpy(name, &cmd_frame[1], nlen);
+    name[nlen] = 0; // null terminator
+    if (mesh::AmateurStation::isNodeNameAllowed(name)) {
+      strcpy(_prefs.node_name, name);
+      savePrefs();
+      writeOKFrame();
+    } else {
+      writeErrFrame(ERR_CODE_ILLEGAL_ARG);   // amateur builds: name must start with a call sign
+    }
   } else if (cmd_frame[0] == CMD_SET_ADVERT_LATLON && len >= 9) {
     int32_t lat, lon, alt = 0;
     memcpy(&lat, &cmd_frame[1], 4);
@@ -1439,7 +1446,7 @@ void MyMesh::handleCmdFrame(size_t len) {
     if (repeat && !isValidClientRepeatFreq(freq)) {
       writeErrFrame(ERR_CODE_ILLEGAL_ARG);
     } else if (freq >= 150000 && freq <= 2500000 && sf >= 5 && sf <= 12 && cr >= 5 && cr <= 8 && bw >= 7000 &&
-        bw <= 500000) {
+        bw <= 500000 && mesh::AmateurStation::isFreqAllowedMHz(freq / 1000.0f)) {
       _prefs.sf = sf;
       _prefs.cr = cr;
       _prefs.freq = (float)freq / 1000.0;

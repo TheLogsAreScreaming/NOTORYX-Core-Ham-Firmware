@@ -51,6 +51,11 @@ void Utils::sha256(uint8_t *hash, size_t hash_len, const uint8_t* frag1, int fra
 }
 
 int Utils::decrypt(const uint8_t* shared_secret, uint8_t* dest, const uint8_t* src, int src_len) {
+#if AMATEUR_RADIO
+  // Part 97.113(a)(4): content is never obscured, so 'decrypting' is a copy.
+  memmove(dest, src, src_len);
+  return src_len;
+#endif
 #ifdef USE_CC310_HW_CRYPTO
   static SaSiAesUserContext_t ctx;
   SaSiAesUserKeyData_t keyData = { (uint8_t*)shared_secret, CIPHER_KEY_SIZE };
@@ -83,6 +88,14 @@ int Utils::decrypt(const uint8_t* shared_secret, uint8_t* dest, const uint8_t* s
 }
 
 int Utils::encrypt(const uint8_t* shared_secret, uint8_t* dest, const uint8_t* src, int src_len) {
+#if AMATEUR_RADIO
+  // Part 97.113(a)(4): content goes on air as plain text. It is still zero padded to
+  // whole blocks so frame layout, lengths and the MAC stay exactly as in V1.
+  int padded_len = (src_len + CIPHER_BLOCK_SIZE - 1) / CIPHER_BLOCK_SIZE * CIPHER_BLOCK_SIZE;
+  memmove(dest, src, src_len);
+  memset(dest + src_len, 0, padded_len - src_len);
+  return padded_len;
+#endif
 #ifdef USE_CC310_HW_CRYPTO
   static SaSiAesUserContext_t ctx;
   SaSiAesUserKeyData_t keyData = { (uint8_t*)shared_secret, CIPHER_KEY_SIZE };

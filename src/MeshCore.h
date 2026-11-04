@@ -17,7 +17,17 @@
 #define CIPHER_MAC_SIZE      2
 #define PATH_HASH_SIZE       1
 
-#define MAX_PACKET_PAYLOAD  184
+// Amateur (Part 97) builds end every frame with the transmitting station's call sign,
+// zero padded to AMATEUR_CALL_MAX bytes. The payload shrinks by the same amount so a
+// frame with a full path still fits in MAX_TRANS_UNIT.
+#define AMATEUR_CALL_MAX     8
+#if AMATEUR_RADIO
+  #define STATION_ID_SIZE    AMATEUR_CALL_MAX
+#else
+  #define STATION_ID_SIZE    0
+#endif
+
+#define MAX_PACKET_PAYLOAD  (184 - STATION_ID_SIZE)
 #define MAX_GROUP_DATA_LENGTH  (MAX_PACKET_PAYLOAD - CIPHER_BLOCK_SIZE - 3)
 #define MAX_PATH_SIZE        64
 #define MAX_TRANS_UNIT      255

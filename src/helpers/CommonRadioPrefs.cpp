@@ -1,6 +1,7 @@
 #include "CommonRadioPrefs.h"
 #include "TxtDataHelpers.h"
 #include "Utils.h"
+#include "AmateurStation.h"
 #include "target.h"
 
 bool CommonRadioPrefs::getByKey(const char* key, char* value, size_t max_len) {
@@ -45,7 +46,8 @@ bool CommonRadioPrefs::handleCommand(const char* command, uint32_t sender_timest
     float bw    = num > 1 ? strtof(parts[1], nullptr) : 0.0f;
     uint8_t sf  = num > 2 ? atoi(parts[2]) : 0;
     uint8_t cr  = num > 3 ? atoi(parts[3]) : 0;
-    if (freq >= 150.0f && freq <= 2500.0f && sf >= 5 && sf <= 12 && cr >= 5 && cr <= 8 && bw >= 7.0f && bw <= 500.0f) {
+    if (freq >= 150.0f && freq <= 2500.0f && sf >= 5 && sf <= 12 && cr >= 5 && cr <= 8 && bw >= 7.0f && bw <= 500.0f
+        && mesh::AmateurStation::isFreqAllowedMHz(freq)) {
       setSpreadFactor(sf);
       setCodingRate(cr);
       setFreq(freq);
