@@ -1,4 +1,5 @@
 #include "MyMesh.h"
+#include <helpers/AmateurStation.h>
 #include <algorithm>
 
 /* ------------------------------ Config -------------------------------- */
@@ -99,9 +100,9 @@ uint8_t MyMesh::handleLoginReq(const mesh::Identity& sender, const uint8_t* secr
   }
   if (client == NULL) {
     uint8_t perms;
-    if (strcmp((char *)data, _prefs.password) == 0) { // check for valid admin password
+    if (mesh::AmateurStation::loginMatches(data, _prefs.password, sender_timestamp, self_id.pub_key, sender.pub_key)) { // admin password
       perms = PERM_ACL_ADMIN;
-    } else if (strcmp((char *)data, _prefs.guest_password) == 0) { // check guest password
+    } else if (mesh::AmateurStation::loginMatches(data, _prefs.guest_password, sender_timestamp, self_id.pub_key, sender.pub_key)) { // guest password
       perms = PERM_ACL_GUEST;
     } else {
 #if MESH_DEBUG
@@ -579,7 +580,7 @@ void MyMesh::onAnonDataRecv(mesh::Packet *packet, const uint8_t *secret, const m
     uint8_t reply_len;
 
     reply_path_len = 0xFF;
-    if (data[4] == 0 || data[4] >= ' ') {   // is password, ie. a login request
+    if (data[4] == 0 || data[4] >= ' ' || data[4] == AMATEUR_LOGIN_PROOF) {   // is password (or proof), ie. a login request
       reply_len = handleLoginReq(sender, secret, timestamp, &data[4], packet->isRouteFlood());
     } else if (data[4] == ANON_REQ_TYPE_REGIONS && packet->isRouteDirect()) {
       reply_len = handleAnonRegionsReq(sender, timestamp, &data[5]);
