@@ -7,6 +7,51 @@ MeshCore firmware for licensed US amateur radio operators (FCC Part 97): the tra
 >
 > It is in development and has not been tested on the air.
 
+## What changes from MeshCore
+
+Everything sits behind one build flag, `AMATEUR_RADIO`, which `platformio.ini` turns on for every board. With it off the code is stock MeshCore, so upstream updates merge cleanly.
+
+| Part 97 rule | What the firmware does |
+|---|---|
+| §97.119 station ID | Every frame it transmits, including relays, ends with its call sign (8 bytes, zero padded) and is marked payload version 2. |
+| No ID, no transmission | The call sign is the first word of the node name (`W1AW`, `W1AW-7`, `KD2ABC Hilltop`). Without a valid US call sign the radio drops frames instead of sending them. |
+| §97.113(a)(4) no obscured content | Content goes out as plain text, padded to 16-byte blocks. The 2-byte MACs and Ed25519 signatures stay. |
+| §97.301 bands | 420–450 and 902–928 MHz only, enforced by every setter and on prefs load. Default: 906.875 MHz, BW 250, SF 10, CR 5. |
+| Passwords | Repeater, room and sensor logins send a one-time HMAC proof instead of the password. Remote `password`, `guest.password` and `prv.key` commands are refused over RF. |
+| Separate network | Frames without a station ID (ordinary MeshCore) are ignored, so ham radios don't relay Part 15 traffic. |
+
+Text messages are limited to 152 bytes (the station ID takes 8 bytes of every frame). The KISS modem target bypasses the mesh stack and sends no station ID: don't use it for amateur operation.
+
+## Boards
+
+Built and checked: Heltec V4, Heltec T114, RAK4631, RAK3401 (WisMesh 1W Booster), SenseCAP T1000-E, Station G2 and Station G3, in companion (BLE or USB) and repeater roles. The Station G2/G3 BLE companion is 5–6 KB too big for its partition, as in stock MeshCore v1.18.0; use the USB companion on those boards.
+
+```bash
+pio run -e heltec_v4_companion_radio_ble                              # one target
+FIRMWARE_VERSION=v1.18.0-ham bash build.sh build-firmware heltec_v4_repeater   # versioned files in out/
+```
+
+## First boot
+
+A freshly flashed radio **won't transmit**. Set its name to start with your call sign: in the NOTORYX Core Ham app (**Settings → Licensed operator → Set to …**), or over USB serial:
+
+```
+set name W1AW-3 Hilltop
+set radio 906.875,250,10,5
+reboot
+```
+
+Repeater and room-server passwords can only be changed over USB serial (`password …`), never over the air.
+
+## Tests
+
+- `pio test -e native`: call signs, bands, plain-text framing and login-proof rules (`test/test_amateur_station`).
+- [`test/mcsim`](test/mcsim): two-hop simulator runs for relay, station ID, the transmit lock and logins.
+
+## App
+
+Use **[NOTORYX Core Ham](https://github.com/TheLogsAreScreaming/NOTORYX-Core-Ham)**: it reads ham frames, offers only ham-band presets and walks you through licensed operator setup. Ordinary MeshCore apps can connect but will offer Part 15 settings the firmware refuses.
+
 ---
 
 ## About MeshCore
