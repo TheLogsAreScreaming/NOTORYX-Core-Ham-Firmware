@@ -1,0 +1,14 @@
+# NOTORYX Ham test: W1AW logs into the repeater and room server with password "wrong".
+nodes:
+  - name: "W1AW"
+    agent:
+      login:
+        enabled: true
+        startup_s: 5
+        targets:
+          - "N0RPT"
+          - "N0RS Room"
+        password: "wrong"
+        response_timeout_s: 10
+        interval_s: 3
+        max_attempts: 2

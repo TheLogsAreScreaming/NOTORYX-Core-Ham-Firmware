@@ -1,0 +1,46 @@
+diff --git a/crates/mcsim-firmware/build.rs b/crates/mcsim-firmware/build.rs
+index 5733528..8c5a23b 100644
+--- a/crates/mcsim-firmware/build.rs
++++ b/crates/mcsim-firmware/build.rs
+@@ -432,6 +432,12 @@ fn build_firmware_dll(
+         // (#if MAX_NEIGHBOURS) and those features are inert in sim.
+         ("MAX_NEIGHBOURS", Some("50")),
+     ];
++    // NOTORYX Ham: build the Part 97 amateur firmware when it's present.
++    let fw_is_amateur = meshcore_src.join("helpers").join("AmateurStation.cpp").exists();
++    if fw_is_amateur {
++        defines.push(("AMATEUR_RADIO", Some("1")));
++        defines.push(("LORA_FREQ", Some("906.875")));
++    }
+     if fw_has_max_resend {
+         defines.push(("SIM_FW_HAS_MAX_RESEND_ATTEMPTS", Some("1")));
+     }
+@@ -521,6 +527,7 @@ fn build_firmware_dll(
+         "TransportKeyStore.cpp",
+         "RegionMap.cpp",
+         "ArduinoSerialInterface.cpp",
++        "AmateurStation.cpp",
+     ];
+ 
+     for src in &meshcore_helpers {
+diff --git a/simulator/companion/sim_main.cpp b/simulator/companion/sim_main.cpp
+index 2fb995e..42c0193 100644
+--- a/simulator/companion/sim_main.cpp
++++ b/simulator/companion/sim_main.cpp
+@@ -78,14 +78,13 @@ struct CompanionSimNode : public SimNodeImpl {
+             fast_rng,
+             _sim_rtc_instance,
+             tables,
+-            *store,
+-            nullptr  // no UI
++            *store
+         );
+         
+         // Initialize the mesh (companion uses begin(has_display) signature)
+         // NOTE: begin() will try to load identity from DataStore or generate a new one,
+         // so we must set our configured identity AFTER begin() to override it.
+-        mesh->begin(false);  // no display
++        mesh->begin();
+         
+         // Set the identity from config (both private and public keys)
+         // This MUST be done after begin() because begin() loads/creates an identity.

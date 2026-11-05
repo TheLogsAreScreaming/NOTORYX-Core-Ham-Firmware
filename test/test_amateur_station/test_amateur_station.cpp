@@ -99,6 +99,31 @@ TEST(AmateurFrame, RawLengthCountsStationId) {
   EXPECT_STREQ("", pkt.heard_station);
 }
 
+// The native SHA256 mock doesn't compute HMACs, so the tag itself is checked in mcsim
+// (test/mcsim); these cover the framing and what is refused.
+TEST(AmateurLogin, ProofIsMarkerPlusTag) {
+  uint8_t server[PUB_KEY_SIZE] = { 1 }, client[PUB_KEY_SIZE] = { 2 };
+  uint8_t out[1 + AMATEUR_LOGIN_PROOF_SIZE + 1];
+  memset(out, 0xEE, sizeof(out));
+  EXPECT_EQ(1 + AMATEUR_LOGIN_PROOF_SIZE, AmateurStation::writeLoginProof(out, "secret", 1234, server, client));
+  EXPECT_EQ(AMATEUR_LOGIN_PROOF, out[0]);
+  EXPECT_EQ(0xEE, out[1 + AMATEUR_LOGIN_PROOF_SIZE]);   // nothing written past the tag
+}
+
+TEST(AmateurLogin, PlainPasswordsAreRefused) {
+  uint8_t server[PUB_KEY_SIZE] = { 1 }, client[PUB_KEY_SIZE] = { 2 };
+  EXPECT_FALSE(AmateurStation::loginMatches((const uint8_t*)"secret", "secret", 1234, server, client));
+}
+
+TEST(AmateurLogin, BlankMatchesOnlyBlank) {
+  uint8_t server[PUB_KEY_SIZE] = { 1 }, client[PUB_KEY_SIZE] = { 2 };
+  const uint8_t blank[1] = { 0 };
+  EXPECT_TRUE(AmateurStation::loginMatches(blank, "", 1234, server, client));
+  EXPECT_FALSE(AmateurStation::loginMatches(blank, "secret", 1234, server, client));
+  uint8_t proof[1 + AMATEUR_LOGIN_PROOF_SIZE] = { AMATEUR_LOGIN_PROOF };
+  EXPECT_FALSE(AmateurStation::loginMatches(proof, "", 1234, server, client));   // no proof for an empty password
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
