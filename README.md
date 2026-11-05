@@ -1,3 +1,14 @@
+# NOTORYX Ham firmware
+
+MeshCore firmware for licensed US amateur radio operators (FCC Part 97): the transmitting station's call sign on every frame, no encryption on air, and 33 cm / 70 cm only.
+
+> [!WARNING]
+> **Use only after a great deal of coordination.** This firmware transmits automatically on shared amateur bands, and every repeater relays under its operator's licence. Before any node goes on the air, coordinate with your frequency coordinator, the local band plan and every operator in your area. Read **[AMATEUR_OPERATION.md](AMATEUR_OPERATION.md)** first.
+>
+> It is in development and has not been tested on the air.
+
+---
+
 ## About MeshCore
 
 MeshCore is a lightweight, portable C++ library that enables multi-hop packet routing for embedded projects using LoRa and other packet radios. It is designed for developers who want to create resilient, decentralized communication networks that work without the internet.

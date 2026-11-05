@@ -1,0 +1,12 @@
+# NOTORYX Ham test: W1AW sends one DM to KD2ABC and one channel message.
+nodes:
+  - name: "W1AW"
+    agent:
+      direct:
+        enabled: true
+        message_count: 1
+        targets:
+          - "KD2ABC"
+      channel:
+        enabled: true
+        message_count: 1
