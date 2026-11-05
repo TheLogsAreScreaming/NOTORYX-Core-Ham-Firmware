@@ -1,4 +1,5 @@
 #include "SensorMesh.h"
+#include <helpers/AmateurStation.h>
 #include <helpers/RoutingPolicy.h>
 #include <helpers/sensors/LPPDataHelpers.h>
 
@@ -375,7 +376,7 @@ uint8_t SensorMesh::handleLoginReq(const mesh::Identity& sender, const uint8_t* 
       return 0;
     }
   } else {
-    if (strcmp((char *) data, _prefs.password) != 0) {  // check for valid admin password
+    if (!mesh::AmateurStation::loginMatches(data, _prefs.password, sender_timestamp, self_id.pub_key, sender.pub_key)) {  // admin password
     #if MESH_DEBUG
       MESH_DEBUG_PRINTLN("Invalid password: %s", &data[0]);
     #endif
@@ -542,7 +543,7 @@ void SensorMesh::onAnonDataRecv(mesh::Packet* packet, const uint8_t* secret, con
 
     data[len] = 0;  // ensure null terminator
     uint8_t reply_len;
-    if (data[4] == 0 || data[4] >= ' ') {   // is password, ie. a login request
+    if (data[4] == 0 || data[4] >= ' ' || data[4] == AMATEUR_LOGIN_PROOF) {   // is password (or proof), ie. a login request
       reply_len = handleLoginReq(sender, secret, timestamp, &data[4], packet->isRouteFlood());
     //} else if (data[4] == ANON_REQ_TYPE_*) {   // future type codes
       // TODO

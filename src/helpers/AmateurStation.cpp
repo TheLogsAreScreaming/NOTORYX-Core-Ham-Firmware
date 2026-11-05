@@ -1,6 +1,7 @@
 #include "AmateurStation.h"
 
 #include <string.h>
+#include <SHA256.h>
 
 namespace mesh {
 
@@ -43,6 +44,40 @@ int AmateurStation::callsignOf(const char* node_name, char* dest) {
 
 bool AmateurStation::isAmateurFreqMHz(float mhz) {
   return (mhz >= 420.0f && mhz <= 450.0f) || (mhz >= 902.0f && mhz <= 928.0f);
+}
+
+static void loginTag(uint8_t* tag, const char* password, uint32_t timestamp,
+                     const uint8_t* server_pub, const uint8_t* client_pub) {
+  const uint8_t* key = (const uint8_t*)password;
+  size_t key_len = strlen(password);
+  SHA256 sha;
+  sha.resetHMAC(key, key_len);
+  sha.update(&timestamp, 4);   // little-endian on every supported MCU
+  sha.update(server_pub, PUB_KEY_SIZE);
+  sha.update(client_pub, PUB_KEY_SIZE);
+  sha.finalizeHMAC(key, key_len, tag, AMATEUR_LOGIN_PROOF_SIZE);
+}
+
+int AmateurStation::writeLoginProof(uint8_t* dest, const char* password, uint32_t timestamp,
+                                    const uint8_t* server_pub, const uint8_t* client_pub) {
+  dest[0] = AMATEUR_LOGIN_PROOF;
+  loginTag(&dest[1], password, timestamp, server_pub, client_pub);
+  return 1 + AMATEUR_LOGIN_PROOF_SIZE;
+}
+
+bool AmateurStation::loginMatches(const uint8_t* data, const char* password, uint32_t timestamp,
+                                  const uint8_t* server_pub, const uint8_t* client_pub) {
+  if (data[0] == 0) return password[0] == 0;
+#if AMATEUR_RADIO
+  if (data[0] != AMATEUR_LOGIN_PROOF || password[0] == 0) return false;
+  uint8_t expected[AMATEUR_LOGIN_PROOF_SIZE];
+  loginTag(expected, password, timestamp, server_pub, client_pub);
+  uint8_t diff = 0;   // compare every byte, so timing doesn't show how much matched
+  for (int i = 0; i < AMATEUR_LOGIN_PROOF_SIZE; i++) diff |= expected[i] ^ data[1 + i];
+  return diff == 0;
+#else
+  return strcmp((const char*)data, password) == 0;
+#endif
 }
 
 }

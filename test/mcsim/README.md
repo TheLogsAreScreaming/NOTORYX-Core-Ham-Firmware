@@ -7,6 +7,8 @@ Two-hop tests for the Part 97 changes, run in [mcsim](https://github.com/usrflo/
 | `ham_relay.yaml` + `ham_dm_and_channel.yaml` | The DM is readable on air ("DM 1 from W1AW"), frames are payload version 2, W1AW's frames end in `W1AW`, the repeater's relays end in `N0RPT`, and KD2ABC delivers the DM to its app. |
 | `ham_relay.yaml` + `ham_channel.yaml` | The channel message "W1AW: CH 1 from W1AW" is relayed by N0RPT and received by KD2ABC. |
 | `ham_no_call.yaml` + `ham_dm_and_channel.yaml` | The repeater is named "Hilltop" (no call sign): it hears the DM, logs `no valid call sign in node name, not transmitting`, and sends nothing. |
+| `ham_login.yaml` + `ham_login_admin.yaml` | W1AW logs into repeater `N0RPT` and room server `N0RS Room` (mcsim sets both admin passwords to `admin` over serial): both log `Login success!`, and no frame on air contains `admin`. |
+| `ham_login.yaml` + `ham_login_wrong.yaml` | The same with the password `wrong`: the repeater logs `Invalid password`, the room server `Incorrect room password`. |
 
 ## Run
 

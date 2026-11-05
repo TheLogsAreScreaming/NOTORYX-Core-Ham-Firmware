@@ -1,0 +1,28 @@
+# NOTORYX Ham test: W1AW logs into a repeater and a room server, all in range.
+defaults:
+  node:
+    radio:
+      frequency_hz: 906875000
+      bandwidth_hz: 250000
+      spreading_factor: 10
+      coding_rate: 5
+      tx_power_dbm: 20
+
+nodes:
+  - name: "W1AW"
+    location: { lat: 47.6000, lon: -122.4000 }
+    firmware: { type: Companion }
+  - name: "N0RPT"
+    location: { lat: 47.6010, lon: -122.4010 }
+    firmware: { type: Repeater }
+  - name: "N0RS Room"
+    location: { lat: 47.6020, lon: -122.4020 }
+    firmware: { type: RoomServer }
+
+edges:
+  - { from: "W1AW", to: "N0RPT", mean_snr_db_at20dbm: 12.0 }
+  - { from: "N0RPT", to: "W1AW", mean_snr_db_at20dbm: 12.0 }
+  - { from: "W1AW", to: "N0RS Room", mean_snr_db_at20dbm: 12.0 }
+  - { from: "N0RS Room", to: "W1AW", mean_snr_db_at20dbm: 12.0 }
+  - { from: "N0RPT", to: "N0RS Room", mean_snr_db_at20dbm: 12.0 }
+  - { from: "N0RS Room", to: "N0RPT", mean_snr_db_at20dbm: 12.0 }

@@ -1,4 +1,5 @@
 #include "MyMesh.h"
+#include <helpers/AmateurStation.h>
 
 #define REPLY_DELAY_MILLIS          1500
 #define PUSH_NOTIFY_DELAY_MILLIS    2000
@@ -342,10 +343,10 @@ void MyMesh::onAnonDataRecv(mesh::Packet *packet, const uint8_t *secret, const m
     }
     if (client == NULL) {
       uint8_t perm;
-      if (strcmp((char *)&data[8], _prefs.password) == 0) { // check for valid admin password
+      if (mesh::AmateurStation::loginMatches(&data[8], _prefs.password, sender_timestamp, self_id.pub_key, sender.pub_key)) { // admin password
         perm = PERM_ACL_ADMIN;
       } else {
-        if (strcmp((char *)&data[8], _prefs.guest_password) == 0) {   // check the room/public password
+        if (mesh::AmateurStation::loginMatches(&data[8], _prefs.guest_password, sender_timestamp, self_id.pub_key, sender.pub_key)) {   // room/public password
           perm = PERM_ACL_READ_WRITE;
         } else if (_prefs.allow_read_only) {
           perm = PERM_ACL_GUEST;

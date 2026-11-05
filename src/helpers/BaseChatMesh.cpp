@@ -1,4 +1,6 @@
 #include <helpers/BaseChatMesh.h>
+#include <helpers/AmateurStation.h>
+#include <helpers/TxtDataHelpers.h>
 #include <Utils.h>
 
 #ifndef SERVER_RESPONSE_DELAY
@@ -604,19 +606,25 @@ int BaseChatMesh::sendLogin(const ContactInfo& recipient, const char* password, 
   mesh::Packet* pkt;
   {
     int tlen;
-    uint8_t temp[24];
+    uint8_t temp[32];
     uint32_t now = getRTCClock()->getCurrentTimeUnique();
     memcpy(temp, &now, 4);   // mostly an extra blob to help make packet_hash unique
     if (recipient.type == ADV_TYPE_ROOM) {
       memcpy(&temp[4], &recipient.sync_since, 4);
-      int len = strlen(password); if (len > 15) len = 15;  // max 15 chars currently
-      memcpy(&temp[8], password, len);
-      tlen = 8 + len;
+      tlen = 8;
     } else {
-      int len = strlen(password); if (len > 15) len = 15;  // max 15 chars currently
-      memcpy(&temp[4], password, len);
-      tlen = 4 + len;
+      tlen = 4;
     }
+    char pw[16];
+    StrHelper::strncpy(pw, password, sizeof(pw));   // max 15 chars currently
+#if AMATEUR_RADIO
+    if (pw[0] != 0) {   // never put the password itself on air
+      tlen += mesh::AmateurStation::writeLoginProof(&temp[tlen], pw, now, recipient.id.pub_key, self_id.pub_key);
+    }
+#else
+    memcpy(&temp[tlen], pw, strlen(pw));
+    tlen += strlen(pw);
+#endif
 
     pkt = createAnonDatagram(PAYLOAD_TYPE_ANON_REQ, self_id, recipient.id, recipient.getSharedSecret(self_id), temp, tlen);
   }
