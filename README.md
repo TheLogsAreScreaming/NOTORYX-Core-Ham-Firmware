@@ -24,7 +24,7 @@ Text messages are limited to 152 bytes (the station ID takes 8 bytes of every fr
 
 ## Boards
 
-Built and checked: Heltec V4, Heltec T114, RAK4631, RAK3401 (WisMesh 1W Booster), SenseCAP T1000-E, Station G2 and Station G3, in companion (BLE or USB) and repeater roles. The Station G2/G3 BLE companion is 5–6 KB too big for its partition, as in stock MeshCore v1.18.0; use the USB companion on those boards.
+Built and checked: Heltec V4, Heltec T114, RAK4631, RAK3401 (WisMesh 1W Booster), SenseCAP T1000-E, Station G2 and Station G3, in companion (BLE or USB) and repeater roles. The Station G2/G3 BLE companion uses the 16 MB partition layout, so flash it with Erase flash ticked; anything saved on the radio is lost.
 
 ```bash
 pio run -e heltec_v4_companion_radio_ble                              # one target
