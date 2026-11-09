@@ -427,6 +427,11 @@ void KissModem::processTx() {
 
     case TX_DELAY:
       if (millis() - _tx_timer >= (uint32_t)_txdelay * 10) {
+#if AMATEUR_RADIO
+        // This path has no station ID (Part 97.119), so ham builds never transmit.
+        setTxDonePending(0x00);
+        break;
+#endif
         if (_radio.startSendRaw(_pending_tx, _pending_tx_len)) {
           _tx_timer = millis();
           _tx_state = TX_SENDING;
