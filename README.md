@@ -26,6 +26,10 @@ Text messages are limited to 152 bytes (the station ID takes 8 bytes of every fr
 
 Built and checked: Heltec V4, Heltec T114, RAK4631, RAK3401 (WisMesh 1W Booster), SenseCAP T1000-E, Station G2 and Station G3, in companion (BLE or USB) and repeater roles. The Station G2/G3 BLE companion uses the 16 MB partition layout, so flash it with Erase flash ticked; anything saved on the radio is lost.
 
+**Compiled only, never flashed** (firmware test 4): Heltec V3, Heltec Wireless Stick Lite V3, Seeed SenseCAP Solar Node, Seeed Wio Tracker L1, Seeed Xiao nRF52 kit, Seeed Xiao S3, LilyGO T-Beam (SX1262 or SX1276), LilyGO T-Beam S3, nRF52 Pro Micro DIY, LilyGO T-Echo, LilyGO T-LoRa V2.1-1.6, LilyGO T3-S3 (SX1262 or SX1276), LilyGO T-Deck and RAK WisMesh Tag, in companion and repeater roles. None of these has been run on its board yet, so they may not boot.
+
+Ready-made files are in [NOTORYX-Core-Ham-Releases](https://github.com/TheLogsAreScreaming/NOTORYX-Core-Ham-Releases/releases): [firmware test 4](https://github.com/TheLogsAreScreaming/NOTORYX-Core-Ham-Releases/releases/tag/v1.18.0-ham-test.4) for the 14 boards above, [firmware test 3](https://github.com/TheLogsAreScreaming/NOTORYX-Core-Ham-Releases/releases/tag/v1.18.0-ham-test.3) for the Station G2/G3 BLE companion, and the [test 6 release](https://github.com/TheLogsAreScreaming/NOTORYX-Core-Ham-Releases/releases/tag/v0.1.0-test.6) for the rest. Companion builds can also be flashed from the browser with the [web flasher](https://www.meshmayhem.org/hamwebflasher/). For ESP32 boards write the `-merged.bin` at `0x0`; for nRF52 boards double-tap reset and drag the `.uf2` onto the drive that appears.
+
 ```bash
 pio run -e heltec_v4_companion_radio_ble                              # one target
 FIRMWARE_VERSION=v1.18.0-ham bash build.sh build-firmware heltec_v4_repeater   # versioned files in out/
